@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SERCOMM MATCHING</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+body{
+  font-family:Arial;
+  margin:10px;
+  background:#ffffff;
+}
+h2{
+  text-align:center;
+  color:#0033ff;
+}
+input, button{
+  width:100%;
+  padding:8px;
+  margin:4px 0;
+  font-size:14px;
+}
+button{
+  background:#4b00ff;
+  color:#fff;
+  border:none;
+  border-radius:5px;
+  font-weight:bold;
+  cursor:pointer;
+}
+.table-wrapper{
+  max-height:60vh;
+  overflow-y:auto;
+  border:1px solid #000;
+  margin-top:10px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+thead th{
+  position:sticky;
+  top:0;
+  background:#4b00ff;
+  color:#ffffff;
+  border:1px solid #000;
+  padding:6px;
+  font-size:12px;
+  cursor:pointer;
+}
+td{
+  border:1px solid #000;
+  padding:5px;
+  font-size:12px;
+  text-align:center;
+}
+.mismatch{
+  background:#ffc7ce;
+  color:#9c0006;
+  font-weight:bold;
+}
+.true{
+  background:#c8e6c9;
+  font-weight:bold;
+}
+.false{
+  background:#ffcdd2;
+  font-weight:bold;
+}
+tr.editing{
+  outline:3px solid orange;
+}
+th.copied{
+  background:#00b894 !important;
+}/* ===== MENU ===== */
+.hamburger{
+  position:fixed;
+  top:15px;
+  left:15px;
+  font-size:28px;
+  color:white;
+  cursor:pointer;
+  z-index:9999;
+}
+.left-list{
+  position:fixed;
+  top:55px;
+  left:15px;
+  background:rgba(0,0,0,0.8);
+  border-radius:10px;
+  display:none;
+  z-index:9999;
+}
+.left-list div{
+  padding:10px 18px;
+  color:white;
+  border-bottom:1px solid rgba(255,255,255,0.2);
+}
+.left-list div:hover{background:#0033ff;}
+</style>
+</head>
+
+<body>
+  <!-- ☰ MENU -->
+<div class="hamburger" onclick="toggleList(event)">☰</div>
+<div class="left-list" id="leftList">
+  <div><a href="any text to qr.html" style="color:Fuchsia;font-weight:bold;text-decoration:none;">ANY TEXT TO QR</a></div>
+  <div>G-1426G</div>
+  <div>BEACON 3.2 MAIN & SUB</div>
+  <div>5G32-A</div>
+ <div><a href="vantiva2.html" style="color:Lime;text-decoration:none;">VANTIVA 2</a></div>
+ <div><a href="ZYXEL.html" style="color:Lime;text-decoration:none;">WIFI-6,AAP4221ZY MAIN & SUB,AOD410,AOD450</a></div>
+ <div><a href="aviat.html" style="color:Lime;text-decoration:none;">AVIAT(DCM, SPM, RFM)</a></div>
+ <div><a href="SERCOMM.html" style="color:Lime;text-decoration:none;">SERCOMM</a></div>
+</div>
+
+<h2>SERCOMM SCAN MATCHING</h2>
+
+<input id="input1" placeholder="SCAN DIXON LABEL">
+<input id="input2" placeholder="SCAN MOUNTER QR">
+<input id="input3" placeholder="SCAN VENDOR QR">
+
+<button onclick="downloadExcel()">DOWNLOAD EXCEL</button>
+
+<div class="table-wrapper">
+<table id="resultTable">
+<thead>
+<tr>
+  <th>SR NO</th>
+  <th>DIXON LABEL SCAN</th>
+  <th>MOUNTER QR MPN</th>
+  <th>MOUNTER QTY</th>
+  <th>VENDOR LABEL SCAN</th>
+  <th>VENDOR MPN</th>
+  <th>VENDOR QTY</th>
+  <th>SAME MPN & QTY</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+</div>
+
+<!-- 🔥 NEW BUTTON -->
+<button onclick="copyBandC()">COPY COLUMN B & C</button>
+
+<script>
+let editRow=null;
+
+const input1=document.getElementById("input1");
+const input2=document.getElementById("input2");
+const input3=document.getElementById("input3");
+const tableBody=document.getElementById("tableBody");
+const wrapper=document.querySelector(".table-wrapper");
+
+/* AUTO SELECT */
+[input1,input2,input3].forEach(i=>{
+  i.addEventListener("focus",()=>i.select());
+});
+
+/* 🔥 SCANNER SAFE AUTO FLOW */
+input1.addEventListener("keyup",e=>{
+  if(e.key==="Enter"){input2.focus();input2.select();}
+});
+input2.addEventListener("keyup",e=>{
+  if(e.key==="Enter"){input3.focus();input3.select();}
+});
+input3.addEventListener("keyup",e=>{
+  if(e.key==="Enter"){addOrUpdateRow();}
+});
+
+function addOrUpdateRow(){
+  const dixon=input1.value.trim();
+  const mqr=input2.value.trim();
+  const vqr=input3.value.trim();
+  if(!dixon||!mqr||!vqr) return;
+
+  const mParts=mqr.split(" ");
+  const mMPN=mParts[0]||"";
+  let mQty=mParts[1]||"0";
+  if(mQty.includes(".")) mQty=parseFloat(mQty).toString();
+
+  let vMPN="",vQty="";
+  vqr.split(";").forEach(p=>{
+    if(p.startsWith("PN:")) vMPN=p.split(":")[1].trim().replace(/-D$/,'');
+    if(p.startsWith("QTY:")) vQty=p.split(":")[1].trim();
+  });
+
+  const mpnMatch=mMPN===vMPN;
+  const qtyMatch=mQty===vQty;
+  const finalMatch=mpnMatch&&qtyMatch;
+
+  const html=`
+    <td></td>
+    <td>${dixon}</td>
+    <td class="${mpnMatch?'':'mismatch'}">${mMPN}</td>
+    <td class="${qtyMatch?'':'mismatch'}">${mQty}</td>
+    <td>${vqr}</td>
+    <td class="${mpnMatch?'':'mismatch'}">${vMPN}</td>
+    <td class="${qtyMatch?'':'mismatch'}">${vQty}</td>
+    <td class="${finalMatch?'true':'false'}">${finalMatch?'TRUE':'FALSE'}</td>
+  `;
+
+  if(editRow){
+    editRow.innerHTML=html;
+    editRow.classList.remove("editing");
+    editRow=null;
+  }else{
+    const tr=document.createElement("tr");
+    tr.innerHTML=html;
+    tr.onclick=()=>loadForEdit(tr);
+    tableBody.appendChild(tr);
+  }
+
+  refreshSR();
+  wrapper.scrollTop=wrapper.scrollHeight;
+  clearInputs();
+}
+
+function loadForEdit(row){
+  [...tableBody.rows].forEach(r=>r.classList.remove("editing"));
+  row.classList.add("editing");
+  editRow=row;
+
+  input1.value=row.cells[1].innerText;
+  input2.value=row.cells[2].innerText+" "+row.cells[3].innerText;
+  input3.value=row.cells[4].innerText;
+
+  setTimeout(()=>{input1.focus();input1.select();},0);
+}
+
+function refreshSR(){
+  [...tableBody.rows].forEach((r,i)=>r.cells[0].innerText=i+1);
+}
+
+function clearInputs(){
+  input1.value="";
+  input2.value="";
+  input3.value="";
+  input1.focus();
+}
+
+/* 🔥 COLUMN COPY ON HEADER DOUBLE CLICK */
+window.addEventListener("load",()=>{
+  document.querySelectorAll("#resultTable thead th").forEach((th,i)=>{
+    th.addEventListener("dblclick",()=>{
+      let col=[];
+      [...tableBody.rows].forEach(r=>col.push(r.cells[i].innerText));
+      navigator.clipboard.writeText(col.join("\n"));
+      th.classList.add("copied");
+      setTimeout(()=>th.classList.remove("copied"),600);
+    });
+  });
+});
+
+/* 🔥 COPY COLUMN B & C BUTTON */
+function copyBandC(){
+  if(tableBody.rows.length===0){
+    alert("No data to copy");
+    return;
+  }
+  let data=[];
+  [...tableBody.rows].forEach(r=>{
+    data.push(r.cells[1].innerText + "\t" + r.cells[2].innerText);
+  });
+  navigator.clipboard.writeText(data.join("\n"))
+    .then(()=>alert("Column B & C copied"));
+}
+
+/* EXCEL DOWNLOAD */
+function downloadExcel(){
+  if(tableBody.rows.length===0){alert("No data");return;}
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.table_to_sheet(document.getElementById("resultTable"));
+  XLSX.utils.book_append_sheet(wb,ws,"MATCHING");
+  const d=new Date();
+  XLSX.writeFile(
+    wb,
+    `SERCOMM_MATCH_${d.toISOString().replace(/[:T]/g,'-').split('.')[0]}.xlsx`
+  );
+}
+function toggleList(e){
+  const menu = document.getElementById("leftList");
+  menu.style.display = (menu.style.display==="block") ? "none" : "block";
+  if(e) e.stopPropagation(); // hamburger click ko body se isolate karega
+}
+
+/* ===== CLICK ANYWHERE TO CLOSE MENU ===== */
+document.addEventListener("click", function(){
+  const menu = document.getElementById("leftList");
+  if(menu) menu.style.display = "none";
+});
+
+/* ===== PREVENT CLOSE WHEN CLICKING INSIDE MENU ===== */
+document.getElementById("leftList").addEventListener("click", function(e){
+  e.stopPropagation();
+});
+</script>
+
+</body>
+</html>
