@@ -2,7 +2,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>🍁adi🍁MPN QR Generator</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <title>MPN TO QR Generator</title>
 
   <!-- QR LIBRARY -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -3252,7 +3253,7 @@ function showMPN(m){
   let o=qrOutput;
   o.innerHTML="";
   if(!mpnData[m]) return;
-  let h=`<div class="glass"><div id="qr"></div><div class="mpn-text">${m}</div>`;
+  let h=`<div class="top-text">@Adesh</div>q<div class="glass"><div id="qr"></div><div class="mpn-text">${m}</div>`;
   mpnData[m].lists.forEach(l=>{
     h+=`<div class="divider"></div>
         <div class="cat-text">${l.category}</div>
@@ -3293,6 +3294,7 @@ document.getElementById("mpnInput").addEventListener("input",function(){
 
 </body>
 </html>
+
 
 
 
