@@ -3253,9 +3253,10 @@ function showMPN(m){
   let o=qrOutput;
   o.innerHTML="";
   if(!mpnData[m]) return;
-  let h=`<div class="top-text">@Adesh</div>q<div class="glass"><div id="qr"></div><div class="mpn-text">${m}</div>`;
+  let h=`<div class="top-text">@Adesh</div><div class="glass"><div id="qr"></div><div class="mpn-text">${m}</div>`;
   mpnData[m].lists.forEach(l=>{
-    h+=`<div class="divider"></div>
+    h+=`<div class="top-text">@Adesh</div>
+        <div class="divider"></div>
         <div class="cat-text">${l.category}</div>
         <div class="mpn-text">${l.itemCode}</div>
         <div class="desc-text">${l.description}</div>`;
@@ -3294,6 +3295,7 @@ document.getElementById("mpnInput").addEventListener("input",function(){
 
 </body>
 </html>
+
 
 
 
