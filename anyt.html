@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" type="image/png" href="favicon.png">
+<title>Text to QR</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    background: #ffffff;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding-right: 20px;
+    box-sizing: border-box;
+  }
+
+  .main-box{
+    width: 100%;
+    max-width: 360px;
+    padding: 15px;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+
+  .title{
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color:#222;
+  }
+
+  input{
+    padding: 10px;
+    font-size: 14px;
+    border-radius: 6px;
+    border: 2px solid #000;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+  }
+
+  .qr-box{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+  }
+.copyright{
+  position:fixed;
+  bottom:0;
+  width:100%;
+  text-align:right;
+  font-size:11px;
+  color:#555;
+  padding:6px 20px;
+  border-top:1px solid #ccc;
+  background:#fff;
+}
+
+
+  /* ===== GLASS NEON ADESH ===== */
+  .fixed-text{
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    padding: 6px 14px;
+    border-radius: 12px;
+    display: none;
+    color:lime;
+
+    /* Glass Effect */
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.4);
+
+
+
+    box-shadow:
+      0 0 10px rgba(0,247,255,0.6),
+      0 0 25px rgba(0,247,255,0.4),
+      inset 0 0 10px rgba(255,255,255,0.2);
+  }
+
+  .qr-text{
+    font-size: 12px;
+    font-weight: bold;
+    margin-top: 6px;
+    max-width: 260px;
+    text-align: center;
+    word-break: break-all;
+  }
+
+  .qr-white{
+    background: white;
+    padding: 8px;
+    display: none;
+    border: 1px solid #000;
+  
+  }
+
+</style>
+</head>
+
+<body>
+
+<div class="main-box">
+
+  <div class="title">🌸TEXT TO QR🌸</div>
+
+  <!-- INPUT ABOVE QR -->
+  <input type="text" id="text" placeholder="Type any text..." oninput="generateQR()" />
+
+  <div class="qr-box">
+
+    <!-- GLASS NEON ADESH -->
+    <div class="fixed-text" id="fixedText">Adesh</div>
+
+    <!-- QR -->
+    <div class="qr-white">
+      <div id="qrcode"></div>
+    </div>
+
+    <!-- TEXT BELOW QR -->
+    <div class="qr-text" id="bottomText"></div>
+
+  </div>
+
+</div>
+
+<footer class="copyright">
+© 2026 @Adesh / DIXON ELECTRO APPLIANCES PRIVATE LIMITED. All Rights Reserved.
+</footer>
+
+
+<script>
+function generateQR() {
+  const text = document.getElementById("text").value;
+  const qrContainer = document.getElementById("qrcode");
+  const qrWhiteDiv = document.querySelector(".qr-white");
+  const bottomText = document.getElementById("bottomText");
+  const fixedText = document.getElementById("fixedText");
+
+  qrContainer.innerHTML = "";
+
+  if (text.trim() === "") {
+    qrWhiteDiv.style.display = "none";
+    bottomText.innerText = "";
+    fixedText.style.display = "none";
+    return;
+  }
+
+  qrWhiteDiv.style.display = "block";
+  fixedText.style.display = "inline-block";   // show glass neon Adesh
+  bottomText.innerText = text;                // input text below QR
+
+  new QRCode(qrContainer, {
+    text: text,
+    width: 180,
+    height: 180,
+    colorDark: "#000000",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.H,
+  });
+}
+</script>
+</body>
+</html>

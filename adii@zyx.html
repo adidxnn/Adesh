@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="icon" type="image/png" href="zyx.png">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZYXEL MPN MATCHING</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+html, body{
+  margin:0;
+  padding:0;
+  background:#ffffff;
+  font-family:Arial;
+}
+
+.page{ padding:10px; }
+
+h2{
+  text-align:center;
+  color:#0033ff;
+  margin:5px 0 10px;
+}
+
+input{
+  width:100%;
+  padding:8px 12px;
+  margin:5px 0;
+  font-size:14px;
+  border:1px solid #ccc;
+  border-radius:6px;
+  box-sizing:border-box;
+}
+
+input:focus{
+  border-color:#0033ff;
+  box-shadow:0 0 5px rgba(0,51,255,0.4);
+  outline:none;
+}
+
+button{
+  padding:8px 14px;
+  margin:6px 6px 6px 0;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  background:#4b00ff;
+  color:white;
+  font-weight:bold;
+}
+
+#matchBtn{ display:none; }
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+  background:#ffffff;
+}
+
+th{
+  background:#4b00ff;
+  color:#ffffff;
+  border:1px solid #000;
+  padding:6px;
+  font-size:12px;
+}
+
+td{
+  background:#ffffff;
+  color:#000;
+  border:1px solid #000;
+  padding:5px;
+  font-size:12px;
+  text-align:center;
+}
+
+.mismatch{
+  background:#ffc7ce !important;
+  color:#9c0006;
+  font-weight:bold;
+}
+
+.duplicate{
+  background: yellow !important;
+  color: black;
+  font-weight: bold;
+}
+
+.hidden-textarea{ display:none; }
+
+.table-wrapper{
+  max-height:70vh;
+  overflow-y:auto;
+  margin-top:10px;
+}
+
+thead th{
+  position:sticky;
+  top:0;
+  z-index:10;
+}
+.copyright{text-align:center;font-size:11px;color:#555;margin-top:8px;padding:5px;border-top:1px solid #ccc;}
+
+</style>
+</head>
+
+<body>
+
+<div class="page">
+  <h2>WIFI-6,  AAP4221ZY,  AOD410,  AOD450 MPN MATCHING</h2>
+
+  <input type="file" id="excelFile" accept=".xlsx,.xls" />
+  <input type="text" id="input1" placeholder="SCAN DIXON LABEL">
+  <input type="text" id="input2" placeholder="SCAN VENDOR LABEL">
+
+  <button id="matchBtn">MATCH</button>
+  <button onclick="downloadExcel()">DOWNLOAD EXCEL</button>
+  <button onclick="clearTable()">CLEAR TABLE</button>
+
+ <div class="table-wrapper">
+  <table id="resultTable">
+    <thead>
+      <tr>
+        <th>SR</th>
+        <th>DIXON LABEL SCANNING</th>
+        <th>DIXON MPN</th>
+        <th>PART CODE</th>
+        <th>DIXON QTY</th>
+        <th>VENDOR LABEL SCANNING</th>
+        <th>VENDOR MPN</th>
+        <th>VENDOR QTY</th>
+        <th>RESULT</th>
+        <th>ACTION</th> <!-- New column for delete -->
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+    </tbody>
+  </table>
+</div>
+
+<textarea id="WIFI-6" class="hidden-textarea"></textarea>
+
+<script>
+const tableBody = document.getElementById("tableBody");
+const tableWrapper = document.querySelector(".table-wrapper");
+const input1 = document.getElementById("input1");
+const input2 = document.getElementById("input2");
+const excelFile = document.getElementById("excelFile");
+
+let sr = 1;
+let mpnData = {};
+
+// 🔹 LOAD MPN DATA FROM LOCALSTORAGE
+if(localStorage.getItem("mpnData")){
+  mpnData = JSON.parse(localStorage.getItem("mpnData"));
+  document.getElementById("WIFI-6").value = localStorage.getItem("mpnText") || "";
+}
+
+// 🔹 LOAD TABLE FROM LOCALSTORAGE
+if(localStorage.getItem("matchTableData")){
+  tableBody.innerHTML = localStorage.getItem("matchTableData");
+  sr = tableBody.rows.length + 1;
+  highlightDuplicates();
+}
+
+// 🔹 LOAD MPN DATA FROM EXCEL
+excelFile.addEventListener("change", function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(evt){
+    const data = new Uint8Array(evt.target.result);
+    const workbook = XLSX.read(data,{type:'array'});
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    const sheetData = XLSX.utils.sheet_to_json(firstSheet,{header:1});
+    
+    let txt = "MPN\tItem Code\tItem Description\n";
+    mpnData = {};
+    for(let i=1;i<sheetData.length;i++){
+      if(sheetData[i][0] && sheetData[i][1]){
+        txt += sheetData[i][0] + "\t" + sheetData[i][1] + "\t" + (sheetData[i][2]||"") + "\n";
+        mpnData[sheetData[i][1].trim()] = sheetData[i][0].trim();
+      }
+    }
+    document.getElementById("WIFI-6").value = txt;
+    localStorage.setItem("mpnData", JSON.stringify(mpnData));
+    localStorage.setItem("mpnText", txt);
+    alert("Excel Loaded: " + Object.keys(mpnData).length + " items");
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+// 🔹 ENTER KEY NAVIGATION
+input1.addEventListener("keydown", e=>{
+  if(e.key==="Enter"){ e.preventDefault(); input2.focus(); }
+});
+input2.addEventListener("keydown", e=>{
+  if(e.key==="Enter"){ e.preventDefault(); match(); input1.value=""; input2.value=""; input1.focus(); }
+});
+
+// 🔹 MATCH FUNCTION
+function match(){
+  const data1 = input1.value.trim();
+  const data2 = input2.value.trim();
+  if(!data1 || !data2) return;
+
+  const t1 = data1.split(" ");
+  const partCode1 = t1[1];
+  let qty1 = t1[t1.length-1];
+  if(qty1.includes(".")) qty1 = parseFloat(qty1).toString();
+  const mpn1 = mpnData[partCode1] || "NOT FOUND";
+
+  const t2 = data2.split(",");
+  const mpn2 = t2[0] || "NOT FOUND";
+  let qty2 = t2[1] || "0";
+  if(qty2.includes(".")) qty2 = parseFloat(qty2).toString();
+
+  const mpnMatch = mpn1 === mpn2;
+  const qtyMatch = qty1 === qty2;
+  const result = (mpnMatch && qtyMatch) ? "TRUE" : "FALSE";
+
+  const rowHTML = `
+  <tr>
+    <td>${sr++}</td>
+    <td>${data1}</td>
+    <td class="${mpnMatch?'':'mismatch'}">${mpn1}</td>
+    <td>${partCode1}</td>
+    <td class="${qtyMatch?'':'mismatch'}">${qty1}</td>
+    <td>${data2}</td>
+    <td class="${mpnMatch?'':'mismatch'}">${mpn2}</td>
+    <td class="${qtyMatch?'':'mismatch'}">${qty2}</td>
+    <td style="color:${result==='TRUE'?'green':'red'};font-weight:bold">${result}</td>
+    <td><button class="deleteRowBtn">Delete</button></td>
+  </tr>
+  `;
+  tableBody.innerHTML += rowHTML;
+  tableWrapper.scrollTop = tableWrapper.scrollHeight;
+
+  localStorage.setItem("matchTableData", tableBody.innerHTML);
+  highlightDuplicates();
+}
+
+// 🔹 DUPLICATE HIGHLIGHT FUNCTION
+function highlightDuplicates() {
+  const rows = tableBody.querySelectorAll("tr");
+  const colBValues = {};
+  const colCValues = {};
+
+  rows.forEach(row => {
+    const colB = row.cells[1].innerText.trim();
+    const colC = row.cells[2].innerText.trim();
+
+    if(colB && colBValues[colB]){
+      row.cells[1].classList.add("duplicate");
+      colBValues[colB].classList.add("duplicate");
+    } else {
+      colBValues[colB] = row.cells[1];
+      row.cells[1].classList.remove("duplicate");
+    }
+
+    if(colC && colCValues[colC]){
+      row.cells[2].classList.add("duplicate");
+      colCValues[colC].classList.add("duplicate");
+    } else {
+      colCValues[colC] = row.cells[2];
+      row.cells[2].classList.remove("duplicate");
+    }
+  });
+}
+
+// 🔹 DELETE ROW FUNCTION
+tableBody.addEventListener("click", function(e){
+  if(e.target && e.target.classList.contains("deleteRowBtn")){
+    if(confirm("Are you sure you want to delete this row?")){
+      const row = e.target.closest("tr");
+      row.remove();
+      localStorage.setItem("matchTableData", tableBody.innerHTML);
+
+      // Recalculate serial numbers
+      let rows = tableBody.querySelectorAll("tr");
+      sr = 1;
+      rows.forEach(r => r.cells[0].innerText = sr++);
+      highlightDuplicates();
+    }
+  }
+});
+
+// 🔹 DOWNLOAD EXCEL
+function downloadExcel(){
+  if(tableBody.rows.length<=0){
+    alert("No data");
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.table_to_sheet(document.getElementById("resultTable"));
+  XLSX.utils.book_append_sheet(wb, ws, "VANTIVA_2");
+
+  const now = new Date();
+  const fileName =
+    `VANTIVA_2_MATCH_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_`+
+    `${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}.xlsx`;
+
+  XLSX.writeFile(wb, fileName);
+}
+
+// 🔹 CLEAR TABLE
+function clearTable(){
+  if(confirm("Are you sure you want to clear table?")){
+    tableBody.innerHTML = "";
+    sr = 1;
+    localStorage.removeItem("matchTableData");
+  }
+}
+</script>
+<footer class="copyright">
+© 2026 @Adesh / DIXON ELECTRO APPLIANCES PRIVATE LIMITED. All Rights Reserved.
+</footer>
+
+</body>
+</html>
