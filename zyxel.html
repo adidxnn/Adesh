@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/png" href="ser.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZYXEL MATCHING</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+
+<style>
+body{font-family:Arial;margin:10px;background:#fff;}
+h2{
+  text-align:center;
+  color:#0033ff;
+  margin:5px 0 10px;
+  font-weight:bold;
+  text-shadow:
+    0 0 6px #CCFF00,
+    0 0 12px #CCFF00,
+    0 0 22px #CCFF00;
+}
+
+input,button{width:100%;padding:8px;margin:4px 0;font-size:14px;}
+button{background:#4b00ff;color:#fff;border:none;border-radius:5px;font-weight:bold;cursor:pointer;margin-top:5px;}
+.table-wrapper{max-height:60vh;overflow-y:auto;border:1px solid #000;margin-top:10px;}
+table{width:100%;border-collapse:collapse;}
+thead th{position:sticky;top:0;background:#4b00ff;color:#fff;border:1px solid #000;padding:6px;font-size:12px;}
+td{border:1px solid #000;padding:5px;font-size:12px;text-align:center;}
+.mismatch{background:#ffc7ce;color:#9c0006;font-weight:bold;}
+.duplicate{background:#ffeb3b;font-weight:bold;}
+.delete-btn{background:green;color:lime;border:none;border-radius:3px;padding:2px 5px;cursor:pointer;}
+.copyright{text-align:center;font-size:11px;color:#555;margin-top:8px;padding:5px;border-top:1px solid #ccc;}
+</style>
+</head>
+
+<body>
+
+<h2>ZYXEL SCAN MATCHING</h2>
+
+<input id="fileInput" type="file" accept=".xlsx,.xls">
+
+<div id="excelName" style="font-size:12px;color:green;font-weight:bold;margin-bottom:6px;">
+  No Excel uploaded
+</div>
+
+<input id="input1" placeholder="SCAN DIXON LABEL">
+<input id="input2" placeholder="SCAN VENDOR LABEL">
+
+<button onclick="downloadExcel()">DOWNLOAD EXCEL</button>
+<button onclick="clearTable()">CLEAR TABLE</button>
+
+<div class="table-wrapper" id="tableWrapper">
+<table id="resultTable">
+<thead>
+<tr>
+<th>SR</th>
+<th>DIXON LABEL SCANNING</th>
+<th>DIXON MPN</th>
+<th>PART CODE</th>
+<th>DIXON QTY</th>
+<th>VENDOR LABEL SCANNING</th>
+<th>VENDOR MPN</th>
+<th>VENDOR QTY</th>
+<th>RESULT</th>
+<th>ACTION</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+</div>
+
+<script>
+let sr = 1;
+let mpnData = {};
+
+const tableBody = document.getElementById("tableBody");
+const input1 = document.getElementById("input1");
+const input2 = document.getElementById("input2");
+const fileInput = document.getElementById("fileInput");
+const excelName = document.getElementById("excelName");
+
+/* ===== LOAD SAVED DATA ===== */
+window.addEventListener("load", ()=>{
+  const lastExcel = localStorage.getItem("ZYXEL_lastExcelName");
+  if(lastExcel){
+    excelName.innerText = "Last Excel: " + lastExcel;
+  }
+
+  if(localStorage.getItem("ZYXEL_mpnData")){
+    mpnData = JSON.parse(localStorage.getItem("ZYXEL_mpnData"));
+  }
+
+  if(localStorage.getItem("ZYXEL_matchTableData")){
+    tableBody.innerHTML = localStorage.getItem("ZYXEL_matchTableData");
+    sr = tableBody.rows.length + 1;
+    addCellEditListeners();
+    highlightDuplicates();
+  }
+input1.focus();
+});
+
+/* ===== EXCEL UPLOAD ===== */
+fileInput.addEventListener("change", (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+
+  // CLEAR OLD DATA
+  mpnData = {};
+  localStorage.removeItem("ZYXEL_mpnData");
+
+  tableBody.innerHTML = "";
+  sr = 1;
+  localStorage.removeItem("ZYXEL_matchTableData");
+
+  const reader = new FileReader();
+  reader.onload = function(evt){
+    const data = new Uint8Array(evt.target.result);
+    const wb = XLSX.read(data,{type:"array"});
+    const ws = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
+
+    for(let i=1;i<ws.length;i++){
+      const row = ws[i];
+      if(row[1] && row[0]){
+        mpnData[row[1].toString().trim()] =
+        row[0].toString().trim();
+      }
+    }
+
+    localStorage.setItem("ZYXEL_mpnData", JSON.stringify(mpnData));
+    localStorage.setItem("ZYXEL_lastExcelName", file.name);
+
+    excelName.innerText = "Uploaded Excel: " + file.name;
+    alert("New Excel uploaded. Old Excel cleared!");
+    fileInput.value = "";
+// Auto focus after upload
+input1.focus();
+
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+/* ===== ENTER FLOW ===== */
+[input1,input2].forEach(i=>{
+  i.addEventListener("keydown", e=>{
+    if(e.key==="Enter"){
+      e.preventDefault();
+      if(i===input1) input2.focus();
+      else addRow();
+    }
+  });
+});
+
+/* ===== ADD ROW ===== */
+function addRow(){
+  const dixon = input1.value.trim();
+  const vendor = input2.value.trim();
+  if(!dixon || !vendor) return;
+
+  const t1 = dixon.split(" ");
+  const partCode = t1[1] || "";
+  let qty1 = t1[t1.length-1] || "0";
+  if(qty1.includes(".")) qty1 = parseFloat(qty1).toString();
+
+  const dixonMPN = mpnData[partCode] || "NOT FOUND";
+
+let vendorMPN = "NOT FOUND";
+let vendorQty = "0";
+
+// CASE 1: Comma-separated scan
+if (vendor.includes(",")) {
+
+  const parts = vendor.split(",");
+
+  // 1st value = Vendor MPN
+  vendorMPN = parts[0].trim();
+
+  // 2nd value = Vendor QTY (leading zero ignore)
+  if (parts[1]) {
+    vendorQty = parseInt(parts[1], 10).toString();
+  }
+
+}
+// CASE 2: Old ; B-block scan
+else {
+
+  const parts = vendor.split(";");
+  const bBlock = parts[2];
+
+  if (bBlock && bBlock.startsWith("B")) {
+
+    // Vendor MPN = B ke baad 12 characters
+    vendorMPN = bBlock.substring(1, 13);
+
+    // Last 5 digits = Qty (leading zero ignore)
+    const qtyRaw = bBlock.slice(-5);
+    vendorQty = parseInt(qtyRaw, 10).toString();
+  }
+}
+
+  vendorMPN = vendorMPN.replace(/-D$/i,"");
+
+  const mpnMatch = dixonMPN===vendorMPN;
+  const qtyMatch = qty1===vendorQty;
+  const finalMatch = (mpnMatch && qtyMatch) ? "TRUE":"FALSE";
+
+  const tr=document.createElement("tr");
+  tr.innerHTML=`
+  <td>${sr++}</td>
+  <td>${dixon}</td>
+  <td class="${mpnMatch?'':'mismatch'}">${dixonMPN}</td>
+  <td>${partCode}</td>
+  <td class="${qtyMatch?'':'mismatch'}">${qty1}</td>
+  <td>${vendor}</td>
+  <td contenteditable="true" class="${mpnMatch?'':'mismatch'}">${vendorMPN}</td>
+  <td class="${qtyMatch?'':'mismatch'}">${vendorQty}</td>
+  <td style="color:${finalMatch==='TRUE'?'green':'red'};font-weight:bold">${finalMatch}</td>
+  <td><button class="delete-btn">Delete</button></td>`;
+
+  tableBody.appendChild(tr);
+  addDeleteListener(tr);
+  addCellEditListeners();
+  highlightDuplicates();
+  saveTableData();
+
+  input1.value=input2.value="";
+  input1.focus();
+  tableWrapper.scrollTop=tableWrapper.scrollHeight;
+}
+input1.focus();
+
+
+/* ===== DUPLICATE ===== */
+function highlightDuplicates(){
+  const seenB={}, seenF={};
+  [...tableBody.rows].forEach(r=>{
+    const b=r.cells[1].innerText.trim();
+    const f=r.cells[5].innerText.trim();
+    r.cells[1].classList.toggle("duplicate",!!seenB[b]);
+    r.cells[5].classList.toggle("duplicate",!!seenF[f]);
+    seenB[b]=true; seenF[f]=true;
+  });
+}
+
+/* ===== SAVE TABLE ===== */
+function saveTableData(){
+  localStorage.setItem("ZYXEL_matchTableData", tableBody.innerHTML);
+}
+
+/* ===== CLEAR TABLE ===== */
+function clearTable(){
+  if(confirm("Clear entire table?")){
+    tableBody.innerHTML="";
+    sr=1;
+    localStorage.removeItem("ZYXEL_matchTableData");
+  }
+}
+
+/* ===== DELETE ROW ===== */
+function addDeleteListener(row){
+  row.querySelector(".delete-btn").onclick=()=>{
+    row.remove();
+    refreshSR();
+    highlightDuplicates();
+    saveTableData();
+  };
+}
+
+/* ===== REFRESH SR ===== */
+function refreshSR(){
+  sr=1;
+  [...tableBody.rows].forEach(r=>r.cells[0].innerText=sr++);
+}
+
+/* ===== EDIT SAVE ===== */
+function addCellEditListeners(){
+  [...tableBody.rows].forEach(row=>{
+    [...row.cells].forEach(cell=>{
+      if(cell.isContentEditable) cell.oninput=saveTableData;
+    });
+  });
+}
+
+function downloadExcel(){
+  if(resultTable.rows.length<=1){ alert("No data"); return; }
+
+  const wb=XLSX.utils.book_new();
+  const ws={};
+  const rows=resultTable.rows;
+
+  for(let r=0;r<rows.length;r++){
+    for(let c=0;c<rows[r].cells.length;c++){
+      const addr=XLSX.utils.encode_cell({r,c});
+      const val=rows[r].cells[c].innerText;
+      ws[addr]={v:val,t:"s"};
+
+      if(r===0){
+        ws[addr].s={ fill:{fgColor:{rgb:"4B00FF"}}, font:{bold:true,color:{rgb:"FFFFFF"}}, alignment:{horizontal:"center"} };
+      }
+      if(rows[r].cells[c].classList.contains("mismatch")){
+        ws[addr].s={ fill:{fgColor:{rgb:"FFC7CE"}}, font:{bold:true,color:{rgb:"9C0006"}} };
+      }
+      if(rows[r].cells[c].classList.contains("duplicate")){
+        ws[addr].s={ fill:{fgColor:{rgb:"FFEB3B"}}, font:{bold:true} };
+      }
+      if(val === "TRUE"){
+  ws[addr].s = {
+    fill: { fgColor: { rgb: "C6EFCE" } },   // green fill
+    font: { bold:true, color:{ rgb:"006100" } }
+  };
+}
+
+if(val === "FALSE"){
+  ws[addr].s = {
+    fill:{ fgColor:{ rgb:"FFC7CE" } },   // red fill
+    font:{ bold:true, color:{ rgb:"9C0006" } } // dark red text
+  };
+}
+
+    }
+  }
+
+  ws["!ref"]=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length-1,c:8}});
+  XLSX.utils.book_append_sheet(wb,ws,"VANTIVA_2");
+const now = new Date();
+
+// 📅 Date: DD-MM-YYYY
+const date =
+  String(now.getDate()).padStart(2, "0") + "-" +
+  String(now.getMonth() + 1).padStart(2, "0") + "-" +
+  now.getFullYear();
+
+// ⏰ Time: h:mm am/pm
+let hours = now.getHours();
+const minutes = String(now.getMinutes()).padStart(2, "0");
+const ampm = hours >= 12 ? "pm" : "am";
+hours = hours % 12 || 12; // 0 → 12
+
+const time = `${hours}:${minutes} ${ampm}`;
+
+// 📁 Final file name
+const fileName = `ZYXEL_${date}_${time}.xlsx`;
+
+XLSX.writeFile(wb, fileName);
+}
+
+function scrollToLastRow(){
+  tableWrapper.scrollTop=tableWrapper.scrollHeight;
+}
+</script>
+
+<footer class="copyright">
+© 2026 @Adesh / DIXON ELECTRO APPLIANCES PRIVATE LIMITED. All Rights Reserved.
+</footer>
+
+</body>
+</html>
