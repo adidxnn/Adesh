@@ -9,6 +9,25 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
+    /* ===== FOOTER ===== */
+footer.copyright{
+  position:fixed;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:8px 16px;
+  font-size:12px;
+  color:#000;
+  text-align:center;
+
+  /* glass effect */
+  background: rgba(255,255,255,0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border:1px solid rgba(255,255,255,0.4);
+  border-radius:10px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.2);
+}
     body{
       margin:0;
       font-family:Arial;
@@ -3291,9 +3310,15 @@ document.getElementById("mpnInput").addEventListener("input",function(){
 });
 
 </script>
+  <footer class="copyright">
+
+© 2026 @Adesh / DIXON ELECTRO APPLIANCES PRIVATE LIMITED. All Rights Reserved.
+
+</footer>
 
 </body>
 </html>
+
 
 
 
