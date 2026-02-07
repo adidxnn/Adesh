@@ -1,67 +1,797 @@
 <!DOCTYPE html>
+
 <html>
+
 <head>
-<link rel="icon" type="image/png" href="van.png">
+
+<link rel="icon" type="image/png" href="BEACON.png">
+
+
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>BEACON-3.2 MATCHING</title>
+
+
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
+
+
 <style>
-html, body{ margin:0; padding:0; background:#ffffff; font-family:Arial; }
-.page{ padding:10px; }
-h2{
-  text-align:center;
-  color:#0033ff;
-  margin:5px 0 10px;
+
+.delete-btn{
+
+  background:#d32f2f;
+
+  color:#fff;
+
+  border:none;
+
+  padding:4px 8px;
+
+  border-radius:4px;
+
+  cursor:pointer;
+
   font-weight:bold;
-  text-shadow:
-    0 0 6px #CCFF00,
-    0 0 12px #CCFF00,
-    0 0 22px #CCFF00;
+
 }
+
+.delete-btn:hover{
+
+  background:#b71c1c;
+
+}
+
+
+
+html, body{ margin:0; padding:0; background:#ffffff; font-family:Arial; }
+
+.page{ padding:10px; }
+
+h2{
+
+  text-align:center;
+
+  color:#0033ff;
+
+  margin:5px 0 10px;
+
+  font-weight:bold;
+
+  text-shadow:
+
+    0 0 6px #CCFF00,
+
+    0 0 12px #CCFF00,
+
+    0 0 22px #CCFF00;
+
+}
+
+
 
 input, button{ padding:8px 12px; margin:5px 0; font-size:14px; border-radius:6px; box-sizing:border-box; }
+
 input{ border:1px solid #ccc; width:100%; }
+
 input:focus{ border-color:#0033ff; outline:none; box-shadow:0 0 5px rgba(0,51,255,0.4); }
+
 button{ border:none; cursor:pointer; background:#4b00ff; color:white; font-weight:bold; }
 
+
+
 #resultTable{ width:100%; border-collapse:collapse; margin-top:10px; }
+
 #resultTable th, #resultTable td{ border:1px solid #000; padding:5px; font-size:12px; text-align:center; }
+
 #resultTable th{ background:#4b00ff; color:#fff; }
 
+
+
 .mismatch{ background:#ffc7ce !important; color:#9c0006; font-weight:bold; }
+
 /* TRUE RESULT GREEN */
+
 .true-result{
+
   background:#c6efce !important; /* green fill */
+
   color:#006100 !important;      /* dark green text */
+
   font-weight:bold;
+
 }
+
 /* FALSE RESULT RED */
+
 .false-result{
+
   background:#ffc7ce !important;  /* light red fill */
+
   color:#9c0006 !important;       /* dark red text */
+
   font-weight:bold;
+
 }
+
+
+
 
 
 .duplicate { background:#ffeb3b !important; font-weight:bold; }
 
+
+
 .table-wrapper{ max-height:70vh; overflow-y:auto; margin-top:10px; }
+
 thead th{ position:sticky; top:0; z-index:10; }
+
 .copyright{text-align:center;font-size:11px;color:#555;margin-top:8px;padding:5px;border-top:1px solid #ccc;}
 
+
+
 </style>
+
 </head>
 
+
+
 <body>
+
 <div class="page">
+
 <h2>BEACON-3.2 MPN MATCHING</h2>
 
+
+
 <input type="file" id="uploadExcel" accept=".xlsx, .xls">
+
 <input type="text" id="input1" placeholder="scan dixon label">
+
 <input type="text" id="input2" placeholder="scan vendor label">
+
+<button onclick="downloadExcel()">DOWNLOAD EXCEL</button>
+
+<button onclick="clearTable()">CLEAR TABLE</button>
+
+
+
+<div class="table-wrapper">
+
+<table id="resultTable">
+
+<thead>
+
+<tr>
+
+  <th>SR</th>
+
+  <th>DIXON LABEL SCANNING</th>
+
+  <th>DIXON MPN</th>
+
+  <th>PART CODE</th>
+
+  <th>DIXON QTY</th>
+
+  <th>VENDOR LABEL SCANNING</th>
+
+  <th>VENDOR MPN</th>
+
+  <th>VENDOR QTY</th>
+
+  <th>RESULT</th>
+
+  <th>ACTION</th>
+
+</tr>
+
+</thead>
+
+<tbody id="tableBody"></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+
+<script>
+
+const tableBody = document.getElementById("tableBody");
+
+const tableWrapper = document.querySelector(".table-wrapper");
+
+const input1 = document.getElementById("input1");
+
+const input2 = document.getElementById("input2");
+
+const uploadExcel = document.getElementById("uploadExcel");
+
+const resultTable = document.getElementById("resultTable");
+
+
+
+let mpnData = {};
+
+
+
+/* AUTO SELECT */
+
+[input1,input2].forEach(i=>i.addEventListener("focus",()=>i.select()));
+
+
+
+/* LOAD MPN FROM STORAGE */
+
+(function(){
+
+  const saved = localStorage.getItem("BEACON-3.2ExcelData");
+
+  if(saved) mpnData = JSON.parse(saved);
+
+})();
+
+
+
+/* UPLOAD EXCEL */
+
+uploadExcel.addEventListener("change",function(e){
+
+  const file=e.target.files[0]; if(!file) return;
+
+  const r=new FileReader();
+
+  r.onload=function(ev){
+
+    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
+
+    const ws=wb.Sheets[wb.SheetNames[0]];
+
+    const json=XLSX.utils.sheet_to_json(ws,{header:1});
+
+    mpnData={};
+
+    for(let i=1;i<json.length;i++){
+
+      if(json[i][1] && json[i][0]){
+
+        mpnData[json[i][1].toString().trim()] = json[i][0].toString().trim();
+
+      }
+
+    }
+
+    localStorage.setItem("BEACON-3.2ExcelData",JSON.stringify(mpnData));
+
+    alert("Excel uploaded & saved!");
+
+  };
+
+  r.readAsArrayBuffer(file);
+
+});
+
+
+
+/* ENTER NAVIGATION */
+
+input1.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); input2.focus(); }});
+
+input2.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); match(); }});
+
+
+
+/* MATCH */
+
+
+
+function match(){
+
+  const d1=input1.value.trim(), d2=input2.value.trim();
+
+  if(!d1||!d2) return;
+
+
+
+  const t1=d1.split(" ");
+
+  const part=t1[1]||"", qty1=(t1[t1.length-1]||"0").split(".")[0];
+
+  const mpn1=mpnData[part]||"NOT FOUND";
+
+
+
+ const t2 = d2.split("&");
+
+ const mpn2 = t2[1] ? t2[1].trim() : "NOT FOUND";
+
+ const qty2 = t2[2] ? t2[2].split(".")[0].trim() : "0";
+
+
+
+  const mpnMatch=mpn1===mpn2, qtyMatch=qty1===qty2;
+
+  const res=(mpnMatch&&qtyMatch)?"TRUE":"FALSE";
+
+
+
+const tr=document.createElement("tr");
+
+tr.innerHTML=`
+
+  <td></td>
+
+  <td>${d1}</td>
+
+  <td class="${mpnMatch?'':'mismatch'}">${mpn1}</td>
+
+  <td>${part}</td>
+
+  <td class="${qtyMatch?'':'mismatch'}">${qty1}</td>
+
+  <td>${d2}</td>
+
+  <td class="${mpnMatch?'':'mismatch'}">${mpn2}</td>
+
+  <td class="${qtyMatch?'':'mismatch'}">${qty2}</td>
+
+  <td class="${res==='TRUE' ? 'true-result' : 'false-result'}">${res}</td>
+
+  <td><button class="delete-btn">Delete</button></td>
+
+`;
+
+
+
+  tableBody.appendChild(tr);
+
+  addDeleteHandler(tr);
+
+
+
+
+
+  refreshSR();
+
+  enableEditing();
+
+  checkDuplicates();
+
+  save();
+
+  scrollToLastRow();
+
+
+
+  input1.value=""; 
+
+  input2.value=""; 
+
+  input1.focus();
+
+}
+
+
+
+/* SR */
+
+function refreshSR(){
+
+  [...tableBody.rows].forEach((r,i)=>r.cells[0].innerText=i+1);
+
+}
+
+function addDeleteHandler(row){
+
+  row.querySelector(".delete-btn").onclick = () => {
+
+    if(confirm("Delete this row?")){
+
+      row.remove();
+
+      refreshSR();
+
+      checkDuplicates();
+
+      save();
+
+    }
+
+  };
+
+}
+
+
+
+function checkDuplicates() {
+
+  const map1 = {}; // For Column 1 duplicates
+
+  const map6 = {}; // For Column 6 duplicates
+
+
+
+  [...tableBody.rows].forEach(r => {
+
+    const val1 = r.cells[1].innerText;
+
+    const val6 = r.cells[5].innerText;
+
+
+
+    // Remove the duplicate class from both cells initially
+
+    r.cells[1].classList.remove("duplicate");
+
+    r.cells[5].classList.remove("duplicate");
+
+
+
+    // Check for duplicates in Column 1
+
+    if (map1[val1]) {
+
+      r.cells[1].classList.add("duplicate");
+
+      map1[val1].cells[1].classList.add("duplicate");
+
+    } else {
+
+      map1[val1] = r;
+
+    }
+
+
+
+    // Check for duplicates in Column 6
+
+    if (map6[val6]) {
+
+      r.cells[5].classList.add("duplicate");
+
+      map6[val6].cells[5].classList.add("duplicate");
+
+    } else {
+
+      map6[val6] = r;
+
+    }
+
+  });
+
+}
+
+
+
+/* ENABLE EDIT */
+
+function enableEditing(){
+
+  [...tableBody.rows].forEach(row=>{
+
+    [...row.cells].forEach((cell,idx)=>{
+
+      if(idx!==0) cell.contentEditable=true;
+
+    });
+
+  });
+
+}
+
+
+
+/* REAL-TIME UPDATE (EVENT DELEGATION) */
+
+tableBody.addEventListener("input",e=>{
+
+  if(e.target.tagName!=="TD") return;
+
+  updateRowMatch(e.target.parentElement);
+
+  checkDuplicates();
+
+  save();
+
+});
+
+
+
+/* ENTER = EXIT CELL */
+
+tableBody.addEventListener("keydown",e=>{
+
+  if(e.target.tagName==="TD" && e.key==="Enter"){
+
+    e.preventDefault();
+
+    e.target.blur();
+
+  }
+
+});
+
+
+
+function updateRowMatch(row){
+
+  const data1=row.cells[1].innerText.trim();
+
+  const data2=row.cells[5].innerText.trim();
+
+  if(!data1||!data2) return;
+
+
+
+  const t1=data1.split(" ");
+
+  const part=t1[1]||"";
+
+  let qty1=t1[t1.length-1]||"0";
+
+  if(qty1.includes(".")) qty1=parseFloat(qty1).toString();
+
+  const mpn1=mpnData[part]||"NOT FOUND";
+
+
+
+  const t2 = data2.split("&");
+
+  const mpn2 = t2[1] ? t2[1].trim() : "NOT FOUND";
+
+  let qty2 = t2[2] ? t2[2].trim() : "0";
+
+  if(qty2.includes(".")) qty2=parseFloat(qty2).toString();
+
+
+
+  const mpnMatch=mpn1===mpn2;
+
+  const qtyMatch=qty1===qty2;
+
+  const result=(mpnMatch&&qtyMatch)?"TRUE":"FALSE";
+
+
+
+  row.cells[2].innerText=mpn1;
+
+  row.cells[2].className=mpnMatch?"":"mismatch";
+
+
+
+  row.cells[3].innerText=part;
+
+
+
+  row.cells[4].innerText=qty1;
+
+  row.cells[4].className=qtyMatch?"":"mismatch";
+
+
+
+  row.cells[6].innerText=mpn2;
+
+  row.cells[6].className=mpnMatch?"":"mismatch";
+
+
+
+  row.cells[7].innerText=qty2;
+
+  row.cells[7].className=qtyMatch?"":"mismatch";
+
+
+
+row.cells[8].innerText = result;
+
+row.cells[8].className = result==="TRUE" ? "true-result" : "false-result";
+
+}
+
+
+
+/* SAVE */
+
+function save(){
+
+  localStorage.setItem("BEACON-3.2TableData",tableBody.innerHTML);
+
+}
+
+
+
+/* CLEAR */
+
+function clearTable(){
+
+  if(confirm("Clear table?")){
+
+    tableBody.innerHTML="";
+
+    save();
+
+  }
+
+}
+
+
+
+/* LOAD */
+
+window.onload=function(){
+
+  const s=localStorage.getItem("BEACON-3.2TableData");
+
+  if(s){
+
+    tableBody.innerHTML=s;
+
+    refreshSR();
+
+    enableEditing();
+
+    checkDuplicates();
+
+  }
+
+};
+
+
+
+/* DOWNLOAD EXCEL */
+
+
+
+function downloadExcel(){
+
+  if(resultTable.rows.length<=1){ alert("No data"); return; }
+
+
+
+  const wb=XLSX.utils.book_new();
+
+  const ws={};
+
+  const rows=resultTable.rows;
+
+
+
+  for(let r=0;r<rows.length;r++){
+
+    for(let c=0;c<rows[r].cells.length;c++){
+
+      const addr=XLSX.utils.encode_cell({r,c});
+
+      const val=rows[r].cells[c].innerText;
+
+      ws[addr]={v:val,t:"s"};
+
+
+
+      if(r===0){
+
+        ws[addr].s={ fill:{fgColor:{rgb:"4B00FF"}}, font:{bold:true,color:{rgb:"FFFFFF"}}, alignment:{horizontal:"center"} };
+
+      }
+
+      if(rows[r].cells[c].classList.contains("mismatch")){
+
+        ws[addr].s={ fill:{fgColor:{rgb:"FFC7CE"}}, font:{bold:true,color:{rgb:"9C0006"}} };
+
+      }
+
+      if(rows[r].cells[c].classList.contains("duplicate")){
+
+        ws[addr].s={ fill:{fgColor:{rgb:"FFEB3B"}}, font:{bold:true} };
+
+      }
+
+      if(val === "TRUE"){
+
+  ws[addr].s = {
+
+    fill: { fgColor: { rgb: "C6EFCE" } },   // green fill
+
+    font: { bold:true, color:{ rgb:"006100" } }
+
+  };
+
+}
+
+
+
+if(val === "FALSE"){
+
+  ws[addr].s = {
+
+    fill:{ fgColor:{ rgb:"FFC7CE" } },   // red fill
+
+    font:{ bold:true, color:{ rgb:"9C0006" } } // dark red text
+
+  };
+
+}
+
+
+
+    }
+
+  }
+
+
+
+  ws["!ref"]=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length-1,c:8}});
+
+  XLSX.utils.book_append_sheet(wb,ws,"BEACON-3.2");
+
+const now = new Date();
+
+
+
+// 📅 Date: DD-MM-YYYY
+
+const date =
+
+  String(now.getDate()).padStart(2, "0") + "-" +
+
+  String(now.getMonth() + 1).padStart(2, "0") + "-" +
+
+  now.getFullYear();
+
+
+
+// ⏰ Time: h:mm am/pm
+
+let hours = now.getHours();
+
+const minutes = String(now.getMinutes()).padStart(2, "0");
+
+const ampm = hours >= 12 ? "pm" : "am";
+
+hours = hours % 12 || 12; // 0 → 12
+
+
+
+const time = `${hours}:${minutes} ${ampm}`;
+
+
+
+// 📁 Final file name
+
+const fileName = `BEACON-3.2_MATCH_${date}_${time}.xlsx`;
+
+
+
+XLSX.writeFile(wb, fileName);
+
+}
+
+
+
+function scrollToLastRow(){
+
+  tableWrapper.scrollTop=tableWrapper.scrollHeight;
+
+}
+
+</script>
+
+</script>
+
+<footer class="copyright">
+
+© 2026 @Adesh / DIXON ELECTRO APPLIANCES PRIVATE LIMITED. All Rights Reserved.
+
+</footer>
+
+</body>
+
+</html>
+
 <button onclick="downloadExcel()">DOWNLOAD EXCEL</button>
 <button onclick="clearTable()">CLEAR TABLE</button>
 
@@ -368,3 +1098,4 @@ function scrollToLastRow(){
 </footer>
 </body>
 </html>
+
