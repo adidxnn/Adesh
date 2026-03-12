@@ -2,11 +2,17 @@
 
 <html lang="en">
 
+
+
 <head>
 
-<meta charset="UTF-8" />
 
-<link rel="icon" type="image/png" href="favicon.png">
+
+<meta charset="UTF-8">
+
+<link rel="icon" type="image/png" href="any.png">
+
+
 
 <title>Text to QR</title>
 
@@ -18,207 +24,195 @@
 
 <style>
 
-  body {
-
-    margin: 0;
-
-    height: 100vh;
-
-    background: #ffffff;
-
-    font-family: Arial, sans-serif;
-
-    display: flex;
-
-    justify-content: flex-end;
-
-    align-items: center;
-
-    padding-right: 20px;
-
-    box-sizing: border-box;
-
-  }
 
 
+body{
 
-  .main-box{
+margin:0;
 
-    width: 100%;
+height:100vh;
 
-    max-width: 360px;
+background:#ffffff;
 
-    padding: 15px;
+font-family:Arial;
 
-    border: 2px solid #ddd;
+display:flex;
 
-    border-radius: 12px;
+justify-content:flex-end;
 
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+align-items:center;
 
-    text-align: center;
-
-  }
-
-
-
-  .title{
-
-    font-size: 16px;
-
-    font-weight: bold;
-
-    margin-bottom: 8px;
-
-    color:#222;
-
-  }
-
-
-
-  input{
-
-    padding: 10px;
-
-    font-size: 14px;
-
-    border-radius: 6px;
-
-    border: 2px solid #000;
-
-    outline: none;
-
-    width: 100%;
-
-    box-sizing: border-box;
-
-    margin-bottom: 10px;
-
-  }
-
-
-
-  .qr-box{
-
-    display:flex;
-
-    flex-direction:column;
-
-    align-items:center;
-
-    justify-content:center;
-
-  }
-
-.copyright{
-
-  position:fixed;
-
-  bottom:0;
-
-  width:100%;
-
-  text-align:right;
-
-  font-size:11px;
-
-  color:#555;
-
-  padding:6px 20px;
-
-  border-top:1px solid #ccc;
-
-  background:#fff;
+padding-right:40px;
 
 }
 
 
 
+.main-box{
 
+width:320px;
 
-  /* ===== GLASS NEON ADESH ===== */
+padding:20px;
 
-  .fixed-text{
+border:2px solid #ddd;
 
-    font-size: 18px;
+border-radius:12px;
 
-    font-weight: bold;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
 
-    margin-bottom: 8px;
+text-align:center;
 
-    padding: 6px 14px;
-
-    border-radius: 12px;
-
-    display: none;
-
-    color:lime;
+}
 
 
 
-    /* Glass Effect */
+.title{
 
-    background: rgba(255,255,255,0.15);
+font-size:16px;
 
-    backdrop-filter: blur(8px);
+font-weight:bold;
 
-    -webkit-backdrop-filter: blur(8px);
+margin-bottom:10px;
 
-    border: 1px solid rgba(255,255,255,0.4);
-
-
+}
 
 
 
+input{
 
+padding:10px;
 
-    box-shadow:
+width:100%;
 
-      0 0 10px rgba(0,247,255,0.6),
+border:2px solid #000;
 
-      0 0 25px rgba(0,247,255,0.4),
+border-radius:6px;
 
-      inset 0 0 10px rgba(255,255,255,0.2);
+margin-bottom:15px;
 
-  }
-
-
-
-  .qr-text{
-
-    font-size: 12px;
-
-    font-weight: bold;
-
-    margin-top: 6px;
-
-    max-width: 260px;
-
-    text-align: center;
-
-    word-break: break-all;
-
-  }
+}
 
 
 
-  .qr-white{
+.qr-container{
 
-    background: white;
+position:relative;
 
-    padding: 8px;
+display:none;
 
-    display: none;
+}
 
-    border: 1px solid #000;
 
-  
 
-  }
+.copyright{
+
+
+
+  position:fixed;
+
+
+
+  bottom:0;
+
+
+
+  width:100%;
+
+
+
+  text-align:right;
+
+
+
+  font-size:11px;
+
+
+
+  color:#555;
+
+
+
+  padding:6px 20px;
+
+
+
+  border-top:1px solid #ccc;
+
+
+
+  background:#fff;
+
+
+
+}
+
+
+
+#qrcode{
+
+padding:10px;
+
+background:white;
+
+border:1px solid black;
+
+}
+
+
+
+.qr-logo{
+
+
+
+position:absolute;
+
+top:50%;
+
+left:50%;
+
+transform:translate(-50%,-50%);
+
+
+
+width:55px;
+
+height:55px;
+
+
+
+background:white;
+
+padding:5px;
+
+border-radius:8px;
+
+
+
+display:none;
+
+
+
+}
+
+
+
+.qr-text{
+
+margin-top:8px;
+
+font-size:12px;
+
+font-weight:bold;
+
+word-break:break-all;
+
+}
 
 
 
 </style>
+
+
 
 </head>
 
@@ -232,43 +226,31 @@
 
 
 
-  <div class="title">🌸TEXT TO QR🌸</div>
+<div class="title">🌸TEXT TO QR🌸</div>
 
 
 
-  <!-- INPUT ABOVE QR -->
-
-  <input type="text" id="text" placeholder="Type any text..." oninput="generateQR()" />
+<input type="text" id="text" placeholder="Type any text..." oninput="generateQR()">
 
 
 
-  <div class="qr-box">
+<div class="qr-container" id="qrContainer">
 
 
 
-    <!-- GLASS NEON ADESH -->
-
-    <div class="fixed-text" id="fixedText">Adesh</div>
+<div id="qrcode"></div>
 
 
 
-    <!-- QR -->
-
-    <div class="qr-white">
-
-      <div id="qrcode"></div>
-
-    </div>
+<img src="adesh1.png" id="logo" class="qr-logo">
 
 
 
-    <!-- TEXT BELOW QR -->
-
-    <div class="qr-text" id="bottomText"></div>
+</div>
 
 
 
-  </div>
+<div class="qr-text" id="bottomText"></div>
 
 
 
@@ -278,7 +260,11 @@
 
 <footer class="copyright">
 
+
+
 © 2026 @Adesh / DIXON ELECTRO APPLIANCES PRIVATE LIMITED. All Rights Reserved.
+
+
 
 </footer>
 
@@ -288,67 +274,84 @@
 
 <script>
 
-function generateQR() {
 
-  const text = document.getElementById("text").value;
 
-  const qrContainer = document.getElementById("qrcode");
-
-  const qrWhiteDiv = document.querySelector(".qr-white");
-
-  const bottomText = document.getElementById("bottomText");
-
-  const fixedText = document.getElementById("fixedText");
+function generateQR(){
 
 
 
-  qrContainer.innerHTML = "";
+let text=document.getElementById("text").value
+
+let qr=document.getElementById("qrcode")
+
+let logo=document.getElementById("logo")
+
+let qrBox=document.getElementById("qrContainer")
 
 
 
-  if (text.trim() === "") {
-
-    qrWhiteDiv.style.display = "none";
-
-    bottomText.innerText = "";
-
-    fixedText.style.display = "none";
-
-    return;
-
-  }
+qr.innerHTML=""
 
 
 
-  qrWhiteDiv.style.display = "block";
-
-  fixedText.style.display = "inline-block";   // show glass neon Adesh
-
-  bottomText.innerText = text;                // input text below QR
+if(text.trim()===""){
 
 
 
-  new QRCode(qrContainer, {
+logo.style.display="none"
 
-    text: text,
+qrBox.style.display="none"
 
-    width: 180,
+document.getElementById("bottomText").innerText=""
 
-    height: 180,
 
-    colorDark: "#000000",
 
-    colorLight: "#ffffff",
+return
 
-    correctLevel: QRCode.CorrectLevel.H,
 
-  });
 
 }
 
+
+
+qrBox.style.display="inline-block"
+
+
+
+new QRCode(qr,{
+
+text:text,
+
+width:200,
+
+height:200,
+
+colorDark:"#000000",
+
+colorLight:"#ffffff",
+
+correctLevel:QRCode.CorrectLevel.H
+
+})
+
+
+
+logo.style.display="block"
+
+
+
+document.getElementById("bottomText").innerText=text
+
+
+
+}
+
+
+
 </script>
+
+
 
 </body>
 
 </html>
-
