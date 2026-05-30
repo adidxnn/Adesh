@@ -1,358 +1,213 @@
 <!DOCTYPE html>
-
 <html lang="en">
 
-
-
 <head>
-
-
-
 <meta charset="UTF-8">
-
 <link rel="icon" type="image/png" href="favicon.png">
-
-
-
 <title>Text to QR</title>
-
-
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-
-
 <style>
 
-
-
 body{
-
-margin:0;
-
-height:100vh;
-
-background:#ffffff;
-
-font-family:Arial;
-
-display:flex;
-
-justify-content:flex-end;
-
-align-items:center;
-
-padding-right:40px;
-
+    margin:0;
+    height:100vh;
+    background:#ffffff;
+    font-family:Arial;
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    padding-right:40px;
 }
-
-
 
 .main-box{
-
-width:320px;
-
-padding:20px;
-
-border:2px solid #ddd;
-
-border-radius:12px;
-
-box-shadow:0 0 10px rgba(0,0,0,0.1);
-
-text-align:center;
-
+    width:320px;
+    padding:20px;
+    border:2px solid #ddd;
+    border-radius:12px;
+    box-shadow:0 0 10px rgba(0,0,0,0.1);
+    text-align:center;
 }
-
-
 
 .title{
-
-font-size:16px;
-
-font-weight:bold;
-
-margin-bottom:10px;
-
+    font-size:16px;
+    font-weight:bold;
+    margin-bottom:10px;
 }
-
-
 
 input{
-
-padding:10px;
-
-width:100%;
-
-border:2px solid #000;
-
-border-radius:6px;
-
-margin-bottom:15px;
-
+    padding:10px;
+    width:100%;
+    border:2px solid #000;
+    border-radius:6px;
+    margin-bottom:15px;
+    box-sizing:border-box;
 }
-
-
 
 .qr-container{
-
-position:relative;
-
-display:none;
-
+    position:relative;
+    display:none;
 }
-
-
 
 .copyright{
-
-
-
-  position:fixed;
-
-
-
-  bottom:0;
-
-
-
-  width:100%;
-
-
-
-  text-align:right;
-
-
-
-  font-size:11px;
-
-
-
-  color:#555;
-
-
-
-  padding:6px 20px;
-
-
-
-  border-top:1px solid #ccc;
-
-
-
-  background:#fff;
-
-
-
+    position:fixed;
+    bottom:0;
+    width:100%;
+    text-align:right;
+    font-size:11px;
+    color:#BLUE;       
+    padding:6px 20px;
+    border-top:1px solid #ccc;
+    background:#fff;
 }
-
-
 
 #qrcode{
-
-padding:10px;
-
-background:white;
-
-border:1px solid black;
-
+    padding:10px;
+    background:white;
+    border:1px solid black;
+    display:inline-block;
 }
-
-
 
 .qr-logo{
-
-
-
-position:absolute;
-
-top:50%;
-
-left:50%;
-
-transform:translate(-50%,-50%);
-
-
-
-width:55px;
-
-height:55px;
-
-
-
-background:white;
-
-padding:5px;
-
-border-radius:8px;
-
-
-
-display:none;
-
-
-
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    width:55px;
+    height:55px;
+    background:white;
+    padding:5px;
+    border-radius:8px;
+    display:none;
 }
-
-
 
 .qr-text{
-
-margin-top:8px;
-
-font-size:12px;
-
-font-weight:bold;
-
-word-break:break-all;
-
+    margin-top:8px;
+    font-size:12px;
+    font-weight:bold;
+    background:#353835;
+    color:#00FF00;           
+    word-break:break-all;
+}
+.datetime-box{
+    margin-top:12px;
+    font-size:13px;
+    font-weight:bold;
+    color:#333;
+    line-height:1.8;
 }
 
 
+.datetime-box{
+    margin-top:12px;
+    font-size:13px;
+    font-weight:bold;
+    color:#333;
+
+}
 
 </style>
-
-
-
 </head>
-
-
 
 <body>
 
-
-
 <div class="main-box">
 
+    <div class="title">🌸 TEXT TO QR 🌸</div>
 
+    <input type="text" id="text" placeholder="Type any text..." oninput="generateQR()">
 
-<div class="title">🌸TEXT TO QR🌸</div>
-
-
-
-<input type="text" id="text" placeholder="Type any text..." oninput="generateQR()">
-
-
-
-<div class="qr-container" id="qrContainer">
-
-
-
-<div id="qrcode"></div>
-
-
-
-<img src="adesh1.png" id="logo" class="qr-logo">
-
-
-
-</div>
-
-
-
+    <div class="qr-container" id="qrContainer">
+        <div id="qrcode"></div>
+        <img src="adesh1.png" id="logo" class="qr-logo">
+    </div>
 <div class="qr-text" id="bottomText"></div>
+<div class="datetime-box" id="currentDateTime"></div>
+    <div class="qr-text" id="bottomText"></div>
 
-
+    <!-- Current Day, Date & Time -->
+    <div class="datetime-box" id="currentDateTime"></div>
 
 </div>
-
-
 
 <footer class="copyright">
-
-
-
-© 2026 @Adesh / DIXON ELECTRO APPLIANCES PRIVATE LIMITED. All Rights Reserved.
-
-
-
+    © 2026 @Adesh / DIXON ELECTRO APPLIANCES PRIVATE LIMITED. All Rights Reserved.
 </footer>
-
-
-
-
 
 <script>
 
-
-
 function generateQR(){
 
+    let text = document.getElementById("text").value;
+    let qr = document.getElementById("qrcode");
+    let logo = document.getElementById("logo");
+    let qrBox = document.getElementById("qrContainer");
 
+    qr.innerHTML = "";
 
-let text=document.getElementById("text").value
+    if(text.trim() === ""){
 
-let qr=document.getElementById("qrcode")
+        logo.style.display = "none";
+        qrBox.style.display = "none";
+        document.getElementById("bottomText").innerText = "";
+        return;
+    }
 
-let logo=document.getElementById("logo")
+    qrBox.style.display = "inline-block";
 
-let qrBox=document.getElementById("qrContainer")
+    new QRCode(qr,{
+        text:text,
+        width:200,
+        height:200,
+        colorDark:"#000000",
+        colorLight:"#ffffff",
+        correctLevel:QRCode.CorrectLevel.H 
+    });
 
+    logo.style.display = "block";
 
+    document.getElementById("bottomText").innerText = "MPN - " + text;
+    const now = new Date();
 
-qr.innerHTML=""
+    }
 
+// Live Date & Time
+function updateDateTime(){
 
+    const now = new Date();
 
-if(text.trim()===""){
+    const days = [
+        "SUNDAY",
+        "MONDAY",
+        "TUESDAY",
+        "WEDNESDAY",
+        "THURSDAY",
+        "FRIDAY",
+        "SATURDAY"
+    ];
 
+    const day = days[now.getDay()];
 
+    const date = now.toLocaleDateString("en-GB");
 
-logo.style.display="none"
+    const time = now.toLocaleTimeString("en-US",{
+        hour:'2-digit',
+        minute:'2-digit',
+        second:'2-digit',
+        hour12:true
+    });
 
-qrBox.style.display="none"
-
-document.getElementById("bottomText").innerText=""
-
-
-
-return
-
-
-
+    document.getElementById("currentDateTime").innerHTML =
+        "📅 " + day + "<br>" +
+        "📆 " + date + "<br>" +
+        "⏰ " + time;
 }
 
-
-
-qrBox.style.display="inline-block"
-
-
-
-new QRCode(qr,{
-
-text:text,
-
-width:200,
-
-height:200,
-
-colorDark:"#000000",
-
-colorLight:"#ffffff",
-
-correctLevel:QRCode.CorrectLevel.H
-
-})
-
-
-
-logo.style.display="block"
-
-
-
-document.getElementById("bottomText").innerText=text
-
-
-
-}
-
-
+updateDateTime();
+setInterval(updateDateTime,1000);
 
 </script>
 
-
-
 </body>
-
 </html>
-
