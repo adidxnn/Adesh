@@ -367,10 +367,19 @@ const partMap = {
 
 let imageTimer;
 let currentImageIndex = 0;
+let refreshTimer;
 
 function generateQR(){
+    
 
     let text = document.getElementById("text").value.trim();
+        clearTimeout(refreshTimer);
+
+    if(text !== ""){
+        refreshTimer = setTimeout(function(){
+            location.reload();
+        },300000);   // 5 minute
+    }
     let qr = document.getElementById("qrcode");
     let logo = document.getElementById("logo");
     let qrBox = document.getElementById("qrContainer");
